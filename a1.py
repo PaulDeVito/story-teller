@@ -1,7 +1,5 @@
 import numpy as np
 import math
-import scipy as scp
-import scipy.spatial as spat
 from random import shuffle
 
 def count(filename):
@@ -140,6 +138,8 @@ def perplexity(development, train):
 		bigram = prev_word + " " + word
 		if bigram in bigrams:
 			p = -math.log(probs[prev_word]["next"][word])
+		elif prev_word in tokens:
+			p = -math.log(probs[prev_word]["next"]["<UNK>"])
 		else:
 			p = -math.log(unknown_prob)
 		prev_word = word
@@ -302,22 +302,71 @@ def evaluate_embedding(embeddings, test):
 	print(accuracy)
 	return accuracy
 
+def calculate_vector(line, vector_map, d):
+	words = line.split()
+	v = np.zeros(d)
+	missing_word_count = 0
+	for word in words:
+		try:
+			v += vector_map[word]
+		except:
+			missing_word_count += 1
+	np.divide(v, len(words) - missing_word_count)
 
-	# num_correct = 0
-	# i = 0
-	# for analogy in analogies:
-	# 	if i >= n:
-	# 		break
-	# 	try:
-	# 		closest_word = find_analogy(analogy["a"], analogy["b"], analogy["c"], embeddings)
-	# 	except:
-	# 		continue
-	# 	print(analogy["a"] + " is to " + analogy["b"] + " as " + analogy["c"] + " is to " + closest_word + " (" + analogy["d"] + ")")
-	# 	if analogy["d"] == closest_word:
-	# 		num_correct += 1
-	# 	i += 1
+	return v
 
-	# return num_correct/n
+
+def preprocess_vectors(speeches, vector_map, d):
+	lines = open(speeches, "r").readlines()
+	n = len(lines)
+	speech_vectors = np.empty((n,d))
+
+	i = 0
+	for line in lines:
+		speech_vectors[i] = calculate_vector(line, vector_map, d)
+
+	return speech_vectors
+
+
+def classify_embed_simple(train_obama, train_trump, test, embeddings):
+	vector_map, d = build_vectors(embeddings)
+
+	s_vecs_obama = preprocess_vectors(train_obama, vector_map, d)
+	s_vecs_trump = preprocess_vectors(train_trump, vector_map, d)
+
+	comp_vec_obama = np.mean(s_vecs_obama, axis=0)
+	comp_vec_trump = np.mean(s_vecs_trump, axis=0)
+
+	comp_length_obama = np.linalg.norm(comp_vec_obama)
+	comp_length_trump = np.linalg.norm(comp_vec_trump)
+
+	predictions = {}
+	
+	line_id = 0
+	sequences = open(test, "r").readlines()
+	for line in sequences:
+		v = calculate_vector(line, vector_map, d)
+		v_length = np.linalg.norm(v)
+		cdist_obama = np.divide(np.dot(v, comp_vec_obama), v_length * comp_length_obama)
+		cdist_trump = np.divide(np.dot(v, comp_vec_trump), v_length * comp_length_trump)
+
+		if cdist_obama > cdist_trump:
+			predictions[line_id] = 0
+		else:
+			predictions[line_id] = 1
+		line_id += 1
+
+	return predictions
+
+	
+# predictions is a map of line ID to classification. expected value is either 0 for obama or 1 for trump
+def validate(predictions, expected_value):
+	num_correct = 0
+	for k, p in predictions.items():
+		if p == expected_value:
+			num_correct += 1
+
+	return float(num_correct) / float(len(predictions))
 
 
 
@@ -331,6 +380,8 @@ test = "Assignment1_resources/test/test.txt"
 analogy_test = "Assignment1_resources/analogy_test.txt"
 glove_wikipedia_small = "glove6B/glove.6B.50d.txt"
 glove_wikipedia_largest = "glove6B/glove.6B.300d.txt"
+glove_twitter_small = "glove27B/glove.twitter.27B.25d.txt"
+glove_twitter_largest = "glove27B/glove.twitter.27B.200d.txt"
 
 # section 2
 # obama_unigrams, obama_bigrams = count("Assignment1_resources/train/obama.txt")
@@ -362,7 +413,20 @@ glove_wikipedia_largest = "glove6B/glove.6B.300d.txt"
 
 
 #section 7
-# analogy = find_analogy("man", "woman", "king", build_vectors(glove_wikipedia_small))
+# analogy = find_analogy("man", "woman", "king", build_vectors(glove_twitter_largest)[0])
 # print(analogy)
 
-evaluate_embedding(glove_wikipedia_largest,analogy_test)
+# evaluate_embedding(glove_twitter_largest,analogy_test)
+
+#section 8
+# vector_map, dimensions = build_vectors(glove_wikipedia_small)
+predictions = classify_embed_simple(train_obama, train_trump, dev_obama, glove_wikipedia_largest)
+accuracy_obama = validate(predictions, 0)
+predictions = classify_embed_simple(train_obama, train_trump, dev_trump, glove_wikipedia_largest)
+accuracy_trump = validate(predictions, 1)
+print("Obama accuracy: " + str(accuracy_obama * 100) + "%,  Trump accuracy: " + str(accuracy_trump * 100) + "%")
+# predictions = classify_embed_simple(train_obama, train_trump, train, glove_wikipedia_small)
+# output_predictions(predictions)
+# preprocess_vectors(train_obama, vector_map, dimensions)
+
+
