@@ -1,0 +1,6 @@
+open
+enter
+increase
+advance
+win
+loosen
