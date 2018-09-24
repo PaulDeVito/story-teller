@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from random import shuffle
+from sklearn.linear_model import LogisticRegression
 
 def count(filename):
 	file = open(filename, "r")
@@ -324,6 +325,7 @@ def preprocess_vectors(speeches, vector_map, d):
 	i = 0
 	for line in lines:
 		speech_vectors[i] = calculate_vector(line, vector_map, d)
+		i += 1
 
 	return speech_vectors
 
@@ -358,6 +360,33 @@ def classify_embed_simple(train_obama, train_trump, test, embeddings):
 
 	return predictions
 
+
+def classify_embed_ml(train_obama, train_trump, test, embeddings):
+	vector_map, d = build_vectors(embeddings)
+
+	s_vecs_obama = preprocess_vectors(train_obama, vector_map, d)
+	s_vecs_trump = preprocess_vectors(train_trump, vector_map, d)
+
+	s_vecs_test = preprocess_vectors(test, vector_map, d)
+
+	n1 = len(s_vecs_obama)
+	n2 = len(s_vecs_trump)
+	xTr = np.concatenate((s_vecs_obama, s_vecs_trump), axis=0)
+	yTr = np.concatenate((np.zeros(n1),np.ones(n2)))
+
+	lreg = LogisticRegression()
+	lreg.fit(xTr,yTr)
+
+	predictions = lreg.predict(s_vecs_test)
+
+	return predictions
+
+def output_predictions_ml(predictions):
+	file = open("output.txt", "w")
+	file.write("Id,Prediction\n")
+
+	for i in range(len(predictions)):
+		file.write(str(i) + "," + str(int(predictions[i])) + "\n")
 	
 # predictions is a map of line ID to classification. expected value is either 0 for obama or 1 for trump
 def validate(predictions, expected_value):
@@ -367,6 +396,15 @@ def validate(predictions, expected_value):
 			num_correct += 1
 
 	return float(num_correct) / float(len(predictions))
+
+def validate_ml(predictions, expected_value):
+	n = predictions.shape[0]
+	if expected_value == 0:
+		incorrect = np.sum(predictions)
+		return 1 - incorrect / float(len(predictions))
+	else:
+		correct = np.sum(predictions)
+		return correct / float(len(predictions))
 
 
 
@@ -420,13 +458,16 @@ glove_twitter_largest = "glove27B/glove.twitter.27B.200d.txt"
 
 #section 8
 # vector_map, dimensions = build_vectors(glove_wikipedia_small)
-predictions = classify_embed_simple(train_obama, train_trump, dev_obama, glove_wikipedia_largest)
-accuracy_obama = validate(predictions, 0)
-predictions = classify_embed_simple(train_obama, train_trump, dev_trump, glove_wikipedia_largest)
-accuracy_trump = validate(predictions, 1)
-print("Obama accuracy: " + str(accuracy_obama * 100) + "%,  Trump accuracy: " + str(accuracy_trump * 100) + "%")
-# predictions = classify_embed_simple(train_obama, train_trump, train, glove_wikipedia_small)
+# predictions = classify_embed_ml(train_obama, train_trump, dev_obama, glove_twitter_largest)
+# accuracy_obama = validate_ml(predictions, 0)
+# predictions = classify_embed_ml(train_obama, train_trump, dev_trump, glove_twitter_largest)
+# accuracy_trump = validate_ml(predictions, 1)
+# print("Obama accuracy: " + str(accuracy_obama * 100) + "%,  Trump accuracy: " + str(accuracy_trump * 100) + "%")
+# predictions = classify_embed_simple(train_obama, train_trump, test, glove_wikipedia_largest)
 # output_predictions(predictions)
-# preprocess_vectors(train_obama, vector_map, dimensions)
 
+predictions = classify_embed_ml(train_obama, train_trump, test, glove_twitter_largest)
+output_predictions_ml(predictions)
+
+# classify_embed_ml(train_obama, train_trump, dev_obama, glove_wikipedia_small)
 
