@@ -251,6 +251,7 @@ def evaluate_embedding(embeddings, test):
 	prompt_key = []
 	i = 0
 	for line in lines:
+		line = line.lower()
 		line = line.split()
 		try:
 			a[i] = vector_map[line[0]]
@@ -290,7 +291,7 @@ def evaluate_embedding(embeddings, test):
 			dists[max_idx] = 0
 			max_idx = np.argmax(dists)
 			prediction = words[max_idx]
-		# print(prediction +", " + answer_key[i])
+		print(prediction +", " + answer_key[i])
 		if prediction == answer_key[i]:
 			num_correct += 1
 
@@ -300,8 +301,42 @@ def evaluate_embedding(embeddings, test):
 
 		
 	accuracy = float(num_correct) / float(n)
-	print(accuracy)
 	return accuracy
+
+
+def find_similar(embeddings, test):
+	vector_map, d = build_vectors(embeddings)
+	lines = open(test, "r").readlines()
+
+	m = len(vector_map)
+
+	for line in lines:
+		line = line.split()[0]
+		try:
+			v = vector_map[line]
+		except:
+			continue
+		v_length = np.linalg.norm(v)
+		i = 0
+		words = []
+		distances = np.empty(m)
+		for word, w in vector_map.items():
+			w_length = np.linalg.norm(w)
+			cdist = np.divide(np.dot(v, w), w_length * v_length)
+			distances[i] = cdist
+			words.append(word)
+			i += 1
+
+		for j in range(11):
+			max_idx = np.argmax(distances)
+			print(words[max_idx])
+			distances[max_idx] = 0
+
+		print("\n")
+
+
+
+
 
 def calculate_vector(line, vector_map, d):
 	words = line.split()
@@ -416,58 +451,57 @@ dev_trump = "Assignment1_resources/development/trump.txt"
 test = "Assignment1_resources/test/test.txt"
 
 analogy_test = "Assignment1_resources/analogy_test.txt"
+food_analogies = "Food_analogies.txt"
+animal_analogies = "animal_breeds_analogy.txt"
+verb_analogies = "verb_analogies.txt"
+mints = "mints.txt"
 glove_wikipedia_small = "glove6B/glove.6B.50d.txt"
 glove_wikipedia_largest = "glove6B/glove.6B.300d.txt"
 glove_twitter_small = "glove27B/glove.twitter.27B.25d.txt"
 glove_twitter_largest = "glove27B/glove.twitter.27B.200d.txt"
 
 # section 2
-# obama_unigrams, obama_bigrams = count("Assignment1_resources/train/obama.txt")
-# obama_probability_model = probabilities(obama_unigrams, obama_bigrams)
+obama_unigrams, obama_bigrams = count("Assignment1_resources/train/obama.txt")
+obama_probability_model = probabilities(obama_unigrams, obama_bigrams)
 
-# trump_unigrams, trump_bigrams = count("Assignment1_resources/train/trump.txt")
-# trump_probability_model = probabilities(trump_unigrams, trump_bigrams)
+trump_unigrams, trump_bigrams = count("Assignment1_resources/train/trump.txt")
+trump_probability_model = probabilities(trump_unigrams, trump_bigrams)
 
 # section 3
-# obama_unigram_random = random_sentences("Assignment1_resources/train/obama.txt")
-# obama_bigram_random = random_sentences("Assignment1_resources/train/obama.txt", False)
+obama_unigram_random = random_sentences("Assignment1_resources/train/obama.txt")
+obama_bigram_random = random_sentences("Assignment1_resources/train/obama.txt", False)
 
-# trump_unigram_random = random_sentences("Assignment1_resources/train/trump.txt")
-# trump_bigram_random = random_sentences("Assignment1_resources/train/trump.txt", False)
+trump_unigram_random = random_sentences("Assignment1_resources/train/trump.txt")
+trump_bigram_random = random_sentences("Assignment1_resources/train/trump.txt", False)
 
 # section 4
-# obama_unigrams_smooth, obama_bigrams_smooth = smooth("Assignment1_resources/train/obama.txt")
-# obama_probability_model_smooth = probabilities(obama_unigrams_smooth, obama_bigrams_smooth)
+obama_unigrams_smooth, obama_bigrams_smooth = smooth("Assignment1_resources/train/obama.txt")
+obama_probability_model_smooth = probabilities(obama_unigrams_smooth, obama_bigrams_smooth)
 
-# trump_unigrams_smooth, trump_bigrams_smooth = smooth("Assignment1_resources/train/trump.txt")
-# trump_probability_model_smooth = probabilities(trump_unigrams_smooth, trump_bigrams_smooth)
+trump_unigrams_smooth, trump_bigrams_smooth = smooth("Assignment1_resources/train/trump.txt")
+trump_probability_model_smooth = probabilities(trump_unigrams_smooth, trump_bigrams_smooth)
 
 # section 5
-# perplexity = perplexity(dev_obama, train_obama)
+perplexity = perplexity(dev_obama, train_obama)
 
 #section 6
-# predictions = classify(train_obama, train_trump, dev_obama, dev_trump, test)
+predictions = classify(train_obama, train_trump, dev_obama, dev_trump, test)
 # output_predictions(predictions)
-
 
 #section 7
-# analogy = find_analogy("man", "woman", "king", build_vectors(glove_twitter_largest)[0])
-# print(analogy)
-
-# evaluate_embedding(glove_twitter_largest,analogy_test)
+accuracy = evaluate_embedding(glove_wikipedia_large, analogy_test)
+# find_similar(glove_wikipedia_small, "verbs.txt")
 
 #section 8
-# vector_map, dimensions = build_vectors(glove_wikipedia_small)
-# predictions = classify_embed_ml(train_obama, train_trump, dev_obama, glove_twitter_largest)
-# accuracy_obama = validate_ml(predictions, 0)
-# predictions = classify_embed_ml(train_obama, train_trump, dev_trump, glove_twitter_largest)
-# accuracy_trump = validate_ml(predictions, 1)
-# print("Obama accuracy: " + str(accuracy_obama * 100) + "%,  Trump accuracy: " + str(accuracy_trump * 100) + "%")
-# predictions = classify_embed_simple(train_obama, train_trump, test, glove_wikipedia_largest)
-# output_predictions(predictions)
+predictions = classify_embed_ml(train_obama, train_trump, dev_obama, glove_wikipedia_largest)
+accuracy_obama = validate_ml(predictions, 0)
+predictions = classify_embed_ml(train_obama, train_trump, dev_trump, glove_wikipedia_largest)
+accuracy_trump = validate_ml(predictions, 1)
+print("Obama accuracy: " + str(accuracy_obama * 100) + "%,  Trump accuracy: " + str(accuracy_trump * 100) + "%")
 
-predictions = classify_embed_ml(train_obama, train_trump, test, glove_twitter_largest)
-output_predictions_ml(predictions)
+predictions = classify_embed_simple(train_obama, train_trump, test, glove_wikipedia_largest)
+output_predictions(predictions)
 
-# classify_embed_ml(train_obama, train_trump, dev_obama, glove_wikipedia_small)
-
+# ml method
+predictions = classify_embed_ml(train_obama, train_trump, test, glove_wikipedia_largest)
+# output_predictions_ml(predictions)

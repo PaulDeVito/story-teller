@@ -1,0 +1,3 @@
+walk walking run running
+jump jumping leap leaping
+step stepping climb climbing
